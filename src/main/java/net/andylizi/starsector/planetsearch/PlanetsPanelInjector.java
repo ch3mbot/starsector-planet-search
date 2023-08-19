@@ -109,15 +109,15 @@ public final class PlanetsPanelInjector {
             public List<SectorEntityToken> getFilteredList(UIPanelAPI panel, List<SectorEntityToken> list) {
                 String search = textField.getText().trim().toLowerCase();
                 if (search.isEmpty()) return list;
-
+                
                 //checks for search string in pattern "planet name search c:"conditionSearch") 
                 //where conditionSearch is any number of space separated condition names to look for
                 Pattern p = Pattern.compile("([^:]*)c:\\\"(.*)\\\"");
                 Matcher m = p.matcher(search);
-                if(mb.find()) {
+                if(m.find()) {
                     String nameSearch = m.group(1).trim(); //name
                     String conditionSearch = m.group(2); //conditions separated by spaces
-                    HashSet<String> searchConditionSet = new HashSet<>(conditionSearch.split("\\s+"));
+                    HashSet<String> searchConditionSet = new HashSet<>(Arrays.asList(conditionSearch.split("\\s+")));
                 
                     List<SectorEntityToken> filtered = new ArrayList<>(list.size());
                     for (SectorEntityToken entity : list) {
@@ -125,10 +125,10 @@ public final class PlanetsPanelInjector {
                         
                         boolean someFound = false; //false until one found
                         boolean allFound = true; //true until one missing
-                        entity.getMarket().getConditions().forEach((c) -> {
+                        for(MarketConditionAPI c : entity.getMarket().getConditions()){
                             someFound |= searchConditionSet.contains(c.getName());
                             allFound &= searchConditionSet.contains(c.getName());
-                        }));
+                        }
 
                         //currently use allFound (maybe change "c:" to either "ca" or "co" for choice)
                         if(allFound) {
