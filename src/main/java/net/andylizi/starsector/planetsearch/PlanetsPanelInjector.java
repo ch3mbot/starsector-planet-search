@@ -8,8 +8,9 @@ package net.andylizi.starsector.planetsearch;
 
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.SectorEntityToken;
-import com.fs.starfarer.api.capaign.econ.*;
+import com.fs.starfarer.api.campaign.econ.*;
 import com.fs.starfarer.api.ui.*;
+
 import net.andylizi.starsector.planetsearch.access.*;
 import org.apache.log4j.Logger;
 
@@ -109,28 +110,44 @@ public final class PlanetsPanelInjector {
             public List<SectorEntityToken> getFilteredList(UIPanelAPI panel, List<SectorEntityToken> list) {
                 String search = textField.getText().trim().toLowerCase();
                 if (search.isEmpty()) return list;
-                
+
                 //checks for search string in pattern "planet name search c:"conditionSearch") 
                 //where conditionSearch is any number of space separated condition names to look for
+                //could add other options later, like hazard min and max, etc.
                 Pattern p = Pattern.compile("([^:]*)c:\\\"(.*)\\\"");
                 Matcher m = p.matcher(search);
                 if(m.find()) {
                     String nameSearch = m.group(1).trim(); //name
                     String conditionSearch = m.group(2); //conditions separated by spaces
-                    HashSet<String> searchConditionSet = new HashSet<>(Arrays.asList(conditionSearch.split("\\s+")));
-                
+                    String[] searchConditionSet = conditionSearch.split("\\s+");
+
                     List<SectorEntityToken> filtered = new ArrayList<>(list.size());
                     for (SectorEntityToken entity : list) {
                         if (!entity.getName().toLowerCase().contains(nameSearch)) { continue; }
-                        
-                        boolean someFound = false; //false until one found
-                        boolean allFound = true; //true until one missing
-                        for(MarketConditionAPI c : entity.getMarket().getConditions()){
-                            someFound |= searchConditionSet.contains(c.getName());
-                            allFound &= searchConditionSet.contains(c.getName());
+
+                        HashMap<String, Boolean> foundMap = new HashMap<String, Boolean>();
+                        for (String s : searchConditionSet) {
+                            foundMap.put(s, false);
                         }
 
-                        //currently use allFound (maybe change "c:" to either "ca" or "co" for choice)
+                        if(entity.getMarket() != null && entity.getMarket().getConditions() != null) {
+                            for(MarketConditionAPI c : entity.getMarket().getConditions()) {
+                                for(String s : searchConditionSet) {
+                                    if(c.getName().toLowerCase().contains(s)) {
+                                        foundMap.put(s, true);
+                                    }
+                                }
+                            }
+                        }
+
+                        boolean allFound = true;
+                        boolean someFound = false;
+                        for (boolean found : foundMap.values()) {
+                            allFound &= found;
+                            someFound |= found;
+                        }
+
+                        //currently checks if all were found (maybe change "c:" to either "ca" or "co" for choice)
                         if(allFound) {
                             filtered.add(entity);
                         }
