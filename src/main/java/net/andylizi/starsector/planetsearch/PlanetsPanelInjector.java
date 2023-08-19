@@ -8,6 +8,7 @@ package net.andylizi.starsector.planetsearch;
 
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.SectorEntityToken;
+import com.fs.starfarer.api.capaign.econ.*;
 import com.fs.starfarer.api.ui.*;
 import net.andylizi.starsector.planetsearch.access.*;
 import org.apache.log4j.Logger;
@@ -22,6 +23,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.security.ProtectionDomain;
 import java.util.*;
+import java.util.regex.*;
 
 public final class PlanetsPanelInjector {
     private static final float PLACEHOLDER_OPACITY = 0.45f;
@@ -108,6 +110,33 @@ public final class PlanetsPanelInjector {
                 String search = textField.getText().trim().toLowerCase();
                 if (search.isEmpty()) return list;
 
+                //checks for search string in pattern "planet name search c:"conditionSearch") 
+                //where conditionSearch is any number of space separated condition names to look for
+                Pattern p = Pattern.compile("([^:]*)c:\\\"(.*)\\\"");
+                Matcher m = p.matcher(search);
+                if(mb.find()) {
+                    String nameSearch = m.group(1).trim(); //name
+                    String conditionSearch = m.group(2); //conditions separated by spaces
+                    HashSet<String> searchConditionSet = new HashSet<>(conditionSearch.split("\\s+"));
+                
+                    List<SectorEntityToken> filtered = new ArrayList<>(list.size());
+                    for (SectorEntityToken entity : list) {
+                        if (!entity.getName().toLowerCase().contains(nameSearch)) { continue; }
+                        
+                        boolean someFound = false; //false until one found
+                        boolean allFound = true; //true until one missing
+                        entity.getMarket().getConditions().forEach((c) -> {
+                            someFound |= searchConditionSet.contains(c.getName());
+                            allFound &= searchConditionSet.contains(c.getName());
+                        }));
+
+                        //currently use allFound (maybe change "c:" to either "ca" or "co" for choice)
+                        if(allFound) {
+                            filtered.add(entity);
+                        }
+                    }
+                    return filtered;
+                }
                 List<SectorEntityToken> filtered = new ArrayList<>(list.size());
                 for (SectorEntityToken entity : list) {
                     if (entity.getName().toLowerCase().contains(search)) {
